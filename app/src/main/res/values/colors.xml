@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="imgur" type="color">#85BF25</item>
+    <item name="downvote" type="color">#EE4444</item>
+    <item name="link" type="color">#4E76C9</item>
+    <item name="hover" type="color">#C29F37</item>
+</resources>
