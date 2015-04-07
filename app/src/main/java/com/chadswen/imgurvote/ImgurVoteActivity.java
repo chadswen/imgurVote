@@ -20,6 +20,7 @@ import com.google.gson.JsonObject;
 import com.koushikdutta.async.future.Future;
 import com.koushikdutta.async.future.FutureCallback;
 import com.koushikdutta.ion.Ion;
+import com.koushikdutta.ion.future.ImageViewFuture;
 import com.lorentzos.flingswipe.SwipeFlingAdapterView;
 
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ public class ImgurVoteActivity extends Activity {
 
     private List<JsonObject> mGalleryImageJsonObjectList = new ArrayList<>();
     private Future<JsonObject> mLoading;
+    private ImageViewFuture mImageDownloading;
     private int mGalleryPage;
     private String mAccessToken = "";
 
@@ -97,13 +99,15 @@ public class ImgurVoteActivity extends Activity {
 
             @Override
             public void onLeftCardExit(Object jsonObject) {
-                sendVote(((JsonObject)(jsonObject)).get("id").getAsString(), false);
+                resetImageDownload();
+                sendVote(((JsonObject) (jsonObject)).get("id").getAsString(), false);
                 Log.d("ImgurVoteActivity", "Swipe left");
             }
 
             @Override
             public void onRightCardExit(Object jsonObject) {
-                sendVote(((JsonObject)(jsonObject)).get("id").getAsString(), true);
+                resetImageDownload();
+                sendVote(((JsonObject) (jsonObject)).get("id").getAsString(), true);
                 Log.d("ImgurVoteActivity", "Swipe right");
             }
 
@@ -142,7 +146,7 @@ public class ImgurVoteActivity extends Activity {
                 JsonObject galleryImage = getItem(position);
 
                 // TODO Gallery Albums are ignored for now
-                while(galleryImage.get("is_album").getAsBoolean()) {
+                while (galleryImage.get("is_album").getAsBoolean()) {
                     if (position >= getCount() - 5) {
                         getCredentialsAndLoadPage();
                     }
@@ -172,7 +176,7 @@ public class ImgurVoteActivity extends Activity {
 
                 // Set the ImageView
                 ImageView imageView = (ImageView) convertView.findViewById(R.id.image);
-                Ion.with(ImgurVoteActivity.this)
+                mImageDownloading = Ion.with(ImgurVoteActivity.this)
                         .load(imageUrl)
                         .setHeader("Authorization", "Bearer " + mAccessToken)
                         .withBitmap()
@@ -186,13 +190,13 @@ public class ImgurVoteActivity extends Activity {
 
     private void sendVote(String imgurId, final boolean liked) {
         Ion.with(this)
-                .load("POST","https://api.imgur.com/3/gallery/" + imgurId + "/vote/" + (liked ? "up" : "down"))
+                .load("POST", "https://api.imgur.com/3/gallery/" + imgurId + "/vote/" + (liked ? "up" : "down"))
                 .setHeader("Authorization", "Bearer " + mAccessToken)
                 .asJsonObject()
                 .setCallback(new FutureCallback<JsonObject>() {
                     @Override
                     public void onCompleted(Exception e, JsonObject returnObject) {
-                            if (e != null || !returnObject.get("success").getAsBoolean()) {
+                        if (e != null || !returnObject.get("success").getAsBoolean()) {
                             Toast.makeText(ImgurVoteActivity.this, "Error sending vote",
                                     Toast.LENGTH_LONG).show();
                             return;
@@ -260,6 +264,14 @@ public class ImgurVoteActivity extends Activity {
                         mGalleryImageAdapter.notifyDataSetChanged();
                     }
                 });
+    }
+
+    private void resetImageDownload() {
+        // Cancel pending image download
+        if (mImageDownloading != null && !mImageDownloading.isCancelled()) {
+            mImageDownloading.cancel();
+            mImageDownloading = null;
+        }
     }
 
     @Override
