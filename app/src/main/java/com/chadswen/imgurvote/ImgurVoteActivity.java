@@ -35,7 +35,7 @@ public class ImgurVoteActivity extends Activity {
     public static final String GRANT_TYPE = "refresh_token";
     public static final String TOKEN_URL = "https://api.imgur.com/oauth2/token";
 
-    private static final String IMAGES_PER_PAGE = "25";
+    private static final String IMAGES_PER_PAGE = "30";
 
     private static final String PAGE_NUMBER = "PAGE_NUMBER";
     private static final String PAGE_JSON = "PAGE_JSON";
@@ -76,10 +76,15 @@ public class ImgurVoteActivity extends Activity {
 
             mGalleryImageAdapter.notifyDataSetChanged();
         }
+    }
 
+    @Override
+    public void onResume() {
+        super.onResume();
         // Refresh Credentials and Load next page of Gallery Images
         getCredentialsAndLoadPage();
     }
+
 
     private SwipeFlingAdapterView.onFlingListener getOnFlingListener() {
         return new SwipeFlingAdapterView.onFlingListener() {
@@ -128,21 +133,30 @@ public class ImgurVoteActivity extends Activity {
                     convertView = getLayoutInflater().inflate(R.layout.item, parent, false);
                 }
 
-                // Load next page of images when we're 2 away from the end
-                if (position >= getCount() - 2) {
+                // Load next page of images when we're 5 away from the end
+                if (position >= getCount() - 5) {
                     getCredentialsAndLoadPage();
                 }
 
                 // Get the Gallery image at this position
                 JsonObject galleryImage = getItem(position);
 
-                // TODO handle Gallery Albums
+                // TODO Gallery Albums are ignored for now
+                while(galleryImage.get("is_album").getAsBoolean()) {
+                    if (position >= getCount() - 5) {
+                        getCredentialsAndLoadPage();
+                    }
+                    remove(galleryImage);
+                    galleryImage = getItem(position);
+                    notifyDataSetChanged();
+                }
 
                 // Get the displayed text fields
+
                 JsonElement titleElement = galleryImage.get("title");
-                String title = titleElement.isJsonNull() ? "" : titleElement.getAsString();
+                String title = titleElement.isJsonNull() ? "(No Title)" : titleElement.getAsString();
                 JsonElement descriptionElement = galleryImage.get("description");
-                String description = descriptionElement.isJsonNull() ? "" : descriptionElement.getAsString();
+                String description = descriptionElement.isJsonNull() ? "No Description" : descriptionElement.getAsString();
 
                 // Set the TextViews
                 TextView titleView = (TextView) convertView.findViewById(R.id.title);
@@ -209,8 +223,8 @@ public class ImgurVoteActivity extends Activity {
                         loadGalleryPage();
                     }
                 });
-
     }
+
 
     private void loadGalleryPage() {
         // Don't attempt to load more if a load is already in progress
@@ -233,7 +247,7 @@ public class ImgurVoteActivity extends Activity {
                         // Ion automatically executes this callback on the UI thread, awesome! :)
 
                         if (e != null) {
-                            Toast.makeText(ImgurVoteActivity.this, "Error loading Images",
+                            Toast.makeText(ImgurVoteActivity.this, "Error loading Gallery Page",
                                     Toast.LENGTH_LONG).show();
                             return;
                         }
